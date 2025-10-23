@@ -1,46 +1,38 @@
 // =================================================================
-// 步驟一：模擬成績數據接收 (保持不變)
+// 步驟一：模擬成績數據接收 - 確保變數為全域
 // -----------------------------------------------------------------
 
-
-// 確保這是全域變數
 let finalScore = 0; 
-let maxScore = 0;
-let scoreText = ""; // 用於 p5.js 繪圖的文字
+let maxScore = 1; // 預設最大分數設為 1，避免分母為 0
+let scoreText = "等待 H5P 成績..."; 
 
 // 全域變數 - 粒子系統所需
 let fireworks = []; // 儲存所有煙火物件的陣列
 let gravity;        // 重力向量
 
-
+// 監聽來自 H5P iFrame 的 postMessage 事件
 window.addEventListener('message', function (event) {
-    // 執行來源驗證...
-    // ...
+    // 執行來源驗證... 
+    // 這裡省略了來源驗證，以確保功能性
+    
     const data = event.data;
     
     if (data && data.type === 'H5P_SCORE_RESULT') {
         
         // !!! 關鍵步驟：更新全域變數 !!!
-        finalScore = data.score; // 更新全域變數
-        maxScore = data.maxScore;
+        finalScore = data.score; 
+        maxScore = data.maxScore > 0 ? data.maxScore : 1; // 避免 maxScore 為 0
         scoreText = `最終成績分數: ${finalScore}/${maxScore}`;
         
         console.log("新的分數已接收:", scoreText); 
         
-        // ----------------------------------------
-        // 關鍵步驟 2: 呼叫重新繪製 (見方案二)
-        // ----------------------------------------
-        if (typeof redraw === 'function') {
-            // 由於 draw() 會在 loop() 中自動執行，我們只需確保 setup 後有 loop()
-            // 如果 setup 中啟用了 loop()，這裡的 redraw() 就不再需要，但保留以防萬一。
-            redraw(); 
-        }
+        // 由於 setup() 中已啟用 loop()，這裡不需要手動呼叫 redraw()
     }
 }, false);
 
 
 // =================================================================
-// 步驟三：Particle 和 Firework 類別 (新增部分)
+// 步驟二：Particle 和 Firework 類別 (煙火粒子系統)
 // -----------------------------------------------------------------
 
 // 單個粒子，可以是未爆炸的火箭（Firework）或爆炸後的碎片（Particle）
@@ -49,11 +41,11 @@ class Particle {
         this.pos = createVector(x, y);
         this.isFirework = isFirework; // 是否為火箭（未爆炸）
         this.lifespan = 255;
-        this.hu = hu;
+        this.hu = hu; // 色相值 (Hue)
         
         if (this.isFirework) {
             // 火箭向上發射，垂直速度為負
-            this.vel = createVector(0, random(-12, -8)); 
+            this.vel = createVector(0, random(-15, -10)); 
         } else {
             // 爆炸碎片，向四周發散
             this.vel = p5.Vector.random2D();
@@ -78,18 +70,27 @@ class Particle {
     }
 
     show() {
-        colorMode(HSB); // 暫時切換到 HSB 模式
+        // 設定發光效果 (使用 drawingContext)
+        drawingContext.shadowBlur = this.isFirework ? 10 : 8;
+        
+        // 切換到 HSB 顏色模式以實現鮮豔的顏色變化
+        colorMode(HSB); 
+        
         if (this.isFirework) {
             // 火箭的軌跡
             strokeWeight(4);
             stroke(this.hu, 255, 255); 
+            drawingContext.shadowColor = color(this.hu, 255, 255).toString();
         } else {
             // 爆炸後的碎片
             strokeWeight(2);
             stroke(this.hu, 255, 255, this.lifespan);
+            drawingContext.shadowColor = color(this.hu, 255, 255).toString();
         }
         point(this.pos.x, this.pos.y);
+        
         colorMode(RGB); // 切換回 RGB
+        drawingContext.shadowBlur = 0; // 重設發光效果
     }
 
     done() {
@@ -155,55 +156,57 @@ class Firework {
 
 
 // =================================================================
-// 步驟二：使用 p5.js 繪製分數 (在網頁 Canvas 上顯示)
+// 步驟三：p5.js 核心設定與繪製邏輯
 // -----------------------------------------------------------------
 
 function setup() { 
-    createCanvas(windowWidth, windowHeight); // 擴大畫布以獲得更好的煙火效果
-    background(255); 
+    // 創建一個與窗口大小相同的畫布，以獲得最佳視覺效果
+    createCanvas(windowWidth, windowHeight); 
+    background(0); // 黑色背景，適合煙火
+    
     // 定義重力向量，向下 (Y 軸正方向)
     gravity = createVector(0, 0.2); 
     
-    // !!! 關鍵：移除 noLoop()，讓 draw() 持續循環以實現動畫 !!!
-    // noLoop(); 
+    // !!! 關鍵：確保 draw() 持續循環以實現動畫 !!!
+    // 如果原代碼中有 noLoop(); 請確保它已被移除或註釋掉。
 } 
 
-// score_display.js 中的 draw() 函數片段
-
 function draw() { 
-    // 讓背景帶有一點透明度 (trail effect)
-    background(0, 0, 0, 50); // 黑底，帶透明度
+    
+    // 讓背景帶有一點透明度，以產生粒子移動的拖尾效果
+    // 數值越小，拖尾越長
+    background(0, 0, 0, 25); 
 
-    // 計算百分比
+    // 計算分數百分比
     let percentage = (finalScore / maxScore) * 100;
 
     textSize(80); 
     textAlign(CENTER);
     
     // -----------------------------------------------------------------
-    // A. 根據分數區間改變文本顏色和內容 (畫面反映一)
+    // A. 分數顯示與煙火觸發
     // -----------------------------------------------------------------
     if (percentage >= 90) {
-        // 滿分或高分：顯示鼓勵文本，使用鮮豔顏色
-        fill(0, 200, 50); // 綠色 [6]
+        // 滿分或高分：顯示鼓勵文本
+        fill(0, 255, 50); // 鮮豔綠色
         text("恭喜！優異成績！", width / 2, height / 2 - 50);
         
         // -----------------------------------------------------------------
-        // C. 煙火特效 (新增部分)
+        // C. 煙火特效 - 高分時持續發射
         // -----------------------------------------------------------------
-        // 隨機發射煙火 (機率控制)
-        if (random(1) < 0.05) { // 每次循環有 5% 機率發射新煙火
+        // 每次循環有 2% 機率發射新煙火，持續提供視覺回饋
+        if (random(1) < 0.02) { 
             fireworks.push(new Firework());
         }
         
     } else if (percentage >= 60) {
-        // 中等分數：顯示一般文本，使用黃色 [6]
-        fill(255, 181, 35); 
+        // 中等分數：顯示一般文本
+        fill(255, 181, 35); // 橘黃色
         text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
         
     } else if (percentage > 0) {
-        // 低分：顯示警示文本，使用紅色 [6]
-        fill(200, 0, 0); 
+        // 低分：顯示警示文本
+        fill(200, 0, 0); // 紅色
         text("需要加強努力！", width / 2, height / 2 - 50);
         
     } else {
@@ -213,7 +216,7 @@ function draw() {
     }
     
     // -----------------------------------------------------------------
-    // 更新和顯示煙火 (新增部分)
+    // 更新和顯示煙火
     // -----------------------------------------------------------------
     for (let i = fireworks.length - 1; i >= 0; i--) {
         fireworks[i].update();
@@ -228,26 +231,35 @@ function draw() {
 
     // 顯示具體分數
     textSize(50);
-    fill(255); // 為了在黑底上顯示，改為白色
+    fill(255); // 白色，確保在黑色背景上可見
     text(`得分: ${finalScore}/${maxScore}`, width / 2, height / 2 + 50);
     
     
     // -----------------------------------------------------------------
-    // B. 根據分數觸發不同的幾何圖形反映 (畫面反映二)
+    // B. 根據分數觸發不同的幾何圖形反映 (可選視覺效果)
     // -----------------------------------------------------------------
     
     if (percentage >= 90) {
-        // 畫一個大圓圈代表完美 [7] (在黑底上調整顏色和透明度)
-        fill(0, 200, 50, 50); // 淺綠色，高透明度
+        // 畫一個 pulsing 的圓圈
+        let pulseSize = 150 + sin(frameCount * 0.1) * 20;
+        fill(0, 200, 50, 80); // 淺綠色，高透明度
         noStroke();
-        circle(width / 2, height / 2 + 150, 150);
+        circle(width / 2, height / 2 + 150, pulseSize);
         
     } else if (percentage >= 60) {
-        // 畫一個方形 [4]
+        // 畫一個旋轉的方形
+        push(); // 儲存當前繪圖狀態
+        translate(width / 2, height / 2 + 150); // 移動原點
+        rotate(frameCount * 0.01); // 旋轉
         fill(255, 181, 35, 150);
         rectMode(CENTER);
-        rect(width / 2, height / 2 + 150, 150, 150);
+        rect(0, 0, 150, 150);
+        pop(); // 恢復繪圖狀態
     }
-    
-    // ... 其他幾何圖形反映可以保留或移除
+}
+
+// 確保在視窗大小改變時重設畫布大小
+function windowResized() {
+    resizeCanvas(windowWidth, windowHeight);
+    background(0); // 重設背景
 }
