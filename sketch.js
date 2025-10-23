@@ -1,5 +1,5 @@
 // =================================================================
-// 步驟一：模擬成績數據接收 - 確保變數為全域
+// 步驟一：成績數據接收 (H5P Score Listener)
 // -----------------------------------------------------------------
 
 let finalScore = 0; 
@@ -12,9 +12,9 @@ let gravity;
 
 // 監聽來自 H5P iFrame 的 postMessage 事件
 window.addEventListener('message', function (event) {
-    // 這裡省略了來源驗證，以確保功能性
     const data = event.data;
     
+    // 確保接收到的是我們需要的 H5P 分數格式
     if (data && data.type === 'H5P_SCORE_RESULT') {
         
         // !!! 關鍵步驟：更新全域變數 !!!
@@ -22,16 +22,20 @@ window.addEventListener('message', function (event) {
         maxScore = data.maxScore > 0 ? data.maxScore : 1; 
         scoreText = `最終成績分數: ${finalScore}/${maxScore}`;
         
-        console.log("新的分數已接收:", scoreText); 
+        console.log("新的 H5P 分數已接收:", scoreText); 
+        
+        // 確保 draw 函式立即運行以更新畫面
+        if (typeof loop === 'function' && isLooping() === false) {
+            loop(); 
+        }
     }
 }, false);
 
 
 // =================================================================
-// 步驟二：Particle 和 Firework 類別 (煙火粒子系統)
+// 步驟二：Particle 和 Firework 類別
 // -----------------------------------------------------------------
 
-// 單個粒子 (Particle) 類別
 class Particle {
     constructor(x, y, hu, isFirework) {
         this.pos = createVector(x, y); 
@@ -64,7 +68,6 @@ class Particle {
 
     show() {
         // 使用 drawingContext 實現發光效果
-        // 檢查 drawingContext 是否可用
         if (typeof drawingContext !== 'undefined') {
             drawingContext.shadowBlur = this.isFirework ? 10 : 6;
             // 確保顏色字串在 HSB 模式下生成
@@ -81,7 +84,7 @@ class Particle {
         point(this.pos.x, this.pos.y);
         
         if (typeof drawingContext !== 'undefined') {
-            drawingContext.shadowBlur = 0; // 重設發光效果
+            drawingContext.shadowBlur = 0; 
         }
     }
 
@@ -90,7 +93,6 @@ class Particle {
     }
 }
 
-// 煙火 (Firework) 類別
 class Firework {
     constructor() {
         this.hu = random(255); 
@@ -146,20 +148,21 @@ class Firework {
 // -----------------------------------------------------------------
 
 function setup() { 
+    // 讓 Canvas 佔滿整個瀏覽器窗口
     createCanvas(windowWidth, windowHeight); 
     
-    // !!! 關鍵：設定 HSB 顏色模式，並將最大值設為 255，這樣 hue (色相) 才能從 0 到 255 循環 
+    // !!! 確保顏色模式正確，這是煙火能顯示顏色的關鍵 !!!
     colorMode(HSB, 255); 
     
+    // 設定重力
     gravity = createVector(0, 0.2); 
     
-    // 確保 draw() 持續循環 (預設行為，但我們確保沒有 noLoop())
-    // 移除您原代碼中的 noLoop();
+    // 由於 draw 函式會持續運行，不再需要手動呼叫 loop()，但需要確保沒有 noLoop()
 } 
 
 function draw() { 
     
-    // 讓背景帶有一點透明度 (trail effect)，數值 25
+    // 讓背景帶有一點透明度 (拖尾效果)
     background(0, 0, 0, 25); 
 
     // 計算分數百分比
@@ -168,12 +171,13 @@ function draw() {
     textSize(80); 
     textAlign(CENTER, CENTER); 
     
+    
     // -----------------------------------------------------------------
     // A. 分數顯示與煙火觸發
     // -----------------------------------------------------------------
     
     if (percentage >= 90) {
-        // 高分：顯示鼓勵文本 (使用 HSB 綠色/黃色)
+        // 高分：顯示鼓勵文本 (HSB 綠色/黃色)
         fill(85, 255, 255); 
         text("恭喜！優異成績！", width / 2, height / 2 - 50);
         
@@ -217,6 +221,7 @@ function draw() {
     }
 }
 
+// 確保在視窗大小改變時重設畫布大小
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
     background(0); 
