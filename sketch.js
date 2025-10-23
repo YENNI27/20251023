@@ -23,11 +23,6 @@ window.addEventListener('message', function (event) {
         scoreText = `最終成績分數: ${finalScore}/${maxScore}`;
         
         console.log("新的 H5P 分數已接收:", scoreText); 
-        
-        // 確保 draw 函式立即運行以更新畫面
-        if (typeof loop === 'function' && isLooping() === false) {
-            loop(); 
-        }
     }
 }, false);
 
@@ -67,10 +62,8 @@ class Particle {
     }
 
     show() {
-        // 使用 drawingContext 實現發光效果
         if (typeof drawingContext !== 'undefined') {
             drawingContext.shadowBlur = this.isFirework ? 10 : 6;
-            // 確保顏色字串在 HSB 模式下生成
             drawingContext.shadowColor = color(this.hu, 255, 255).toString();
         }
         
@@ -148,16 +141,9 @@ class Firework {
 // -----------------------------------------------------------------
 
 function setup() { 
-    // 讓 Canvas 佔滿整個瀏覽器窗口
     createCanvas(windowWidth, windowHeight); 
-    
-    // !!! 確保顏色模式正確，這是煙火能顯示顏色的關鍵 !!!
     colorMode(HSB, 255); 
-    
-    // 設定重力
     gravity = createVector(0, 0.2); 
-    
-    // 由於 draw 函式會持續運行，不再需要手動呼叫 loop()，但需要確保沒有 noLoop()
 } 
 
 function draw() { 
@@ -177,7 +163,6 @@ function draw() {
     // -----------------------------------------------------------------
     
     if (percentage >= 90) {
-        // 高分：顯示鼓勵文本 (HSB 綠色/黃色)
         fill(85, 255, 255); 
         text("恭喜！優異成績！", width / 2, height / 2 - 50);
         
@@ -187,12 +172,10 @@ function draw() {
         }
         
     } else if (percentage >= 60) {
-        // 中等分數
         fill(40, 255, 255); 
         text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
         
     } else if (percentage > 0) {
-        // 低分
         fill(0, 255, 255); 
         text("需要加強努力！", width / 2, height / 2 - 50);
         
@@ -202,7 +185,7 @@ function draw() {
         text(scoreText, width / 2, height / 2);
     }
     
-    // 顯示具體分數（在黑底上設為白色）
+    // 顯示具體分數
     textSize(50);
     fill(255); 
     text(`得分: ${finalScore}/${maxScore}`, width / 2, height / 2 + 50);
@@ -221,7 +204,19 @@ function draw() {
     }
 }
 
-// 確保在視窗大小改變時重設畫布大小
+// =================================================================
+// 步驟四：手動測試模式
+// -----------------------------------------------------------------
+function keyPressed() {
+    // 按下 'T' 鍵時強制觸發高分
+    if (key === 't' || key === 'T') {
+        finalScore = 95; // 設置一個高分
+        maxScore = 100;
+        scoreText = `手動測試模式：95/100`;
+        console.log("!!! 手動測試模式已啟用 !!!");
+    }
+}
+
 function windowResized() {
     resizeCanvas(windowWidth, windowHeight);
     background(0); 
