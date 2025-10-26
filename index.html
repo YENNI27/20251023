@@ -17,44 +17,41 @@
 <body>
 
 <script>
-// =================================================================
-// 成績與煙火變數
-// =================================================================
 let finalScore = 0;
 let maxScore = 1;
 let scoreText = "等待 H5P 成績...";
 let fireworks = [];
 let gravity;
 
-// =================================================================
-// p5.js 核心
-// =================================================================
 function setup() {
   createCanvas(windowWidth, windowHeight);
   colorMode(HSB);
   gravity = createVector(0, 0.2);
-  background(0);
   textAlign(CENTER, CENTER);
 }
 
 function draw() {
-  // 透明背景，留殘影
-  background(0, 0, 0, 40);
+  // 用透明黑背景產生拖尾，但不太濃，保留煙火尾巴
+  background(0, 0, 0, 35);
 
+  // --- 先畫煙火（背景） ---
+  for (let i = fireworks.length - 1; i >= 0; i--) {
+    fireworks[i].update();
+    fireworks[i].show();
+    if (fireworks[i].done()) {
+      fireworks.splice(i, 1);
+    }
+  }
+
+  // --- 再畫文字（前景） ---
   let percentage = (finalScore / maxScore) * 100;
-
-  // 成績訊息
   textSize(60);
   noStroke();
 
   if (percentage >= 90) {
     fill(85, 255, 255);
     text("🎉 恭喜！優異成績！ 🎉", width / 2, height / 2 - 50);
-
-    // 不斷發射煙火
-    if (random(1) < 0.1) {
-      fireworks.push(new Firework());
-    }
+    if (random(1) < 0.1) fireworks.push(new Firework());
   } else if (percentage >= 60) {
     fill(40, 255, 255);
     text("成績良好，請再接再厲。", width / 2, height / 2 - 50);
@@ -69,20 +66,8 @@ function draw() {
   textSize(40);
   fill(255);
   text(`得分: ${finalScore}/${maxScore}`, width / 2, height / 2 + 50);
-
-  // 更新煙火
-  for (let i = fireworks.length - 1; i >= 0; i--) {
-    fireworks[i].update();
-    fireworks[i].show();
-    if (fireworks[i].done()) {
-      fireworks.splice(i, 1);
-    }
-  }
 }
 
-// =================================================================
-// 粒子類別
-// =================================================================
 class Particle {
   constructor(x, y, hu, isFirework) {
     this.pos = createVector(x, y);
@@ -92,10 +77,10 @@ class Particle {
     this.acc = createVector(0, 0);
 
     if (this.isFirework) {
-      this.vel = createVector(0, random(-13, -17)); // 上升速度
+      this.vel = createVector(0, random(-14, -18));
     } else {
       this.vel = p5.Vector.random2D();
-      this.vel.mult(random(2, 8)); // 爆炸速度
+      this.vel.mult(random(2, 8));
     }
   }
 
@@ -130,9 +115,6 @@ class Particle {
   }
 }
 
-// =================================================================
-// 煙火類別
-// =================================================================
 class Firework {
   constructor() {
     this.hu = random(255);
@@ -146,7 +128,6 @@ class Firework {
       this.firework.applyForce(gravity);
       this.firework.update();
 
-      // 上升到頂點時爆炸
       if (this.firework.vel.y >= 0) {
         this.exploded = true;
         this.explode();
@@ -170,12 +151,8 @@ class Firework {
   }
 
   show() {
-    if (!this.exploded) {
-      this.firework.show();
-    }
-    for (let p of this.particles) {
-      p.show();
-    }
+    if (!this.exploded) this.firework.show();
+    for (let p of this.particles) p.show();
   }
 
   done() {
@@ -183,15 +160,12 @@ class Firework {
   }
 }
 
-// =================================================================
-// 手動測試模式
-// =================================================================
 function keyPressed() {
   if (key === "t" || key === "T") {
     finalScore = 95;
     maxScore = 100;
     scoreText = `手動測試模式：95/100`;
-    console.log("手動測試模式啟用，煙火將自動出現！");
+    console.log("手動測試模式啟用，煙火會出現！");
   }
 }
 
